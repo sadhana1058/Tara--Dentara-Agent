@@ -1,15 +1,14 @@
 import { google } from 'googleapis';
 
-export function getCalendarClient() {
-  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
-    throw new Error('Missing Google OAuth env vars');
-  }
+export function getCalendarClient(refreshToken?: string) {
+  const token = refreshToken || process.env.GOOGLE_REFRESH_TOKEN;
+  if (!token) throw new Error('No Google refresh token available');
+
   const oauth2Client = new google.auth.OAuth2(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET
+    process.env.GOOGLE_CLIENT_ID!,
+    process.env.GOOGLE_CLIENT_SECRET!
   );
-  oauth2Client.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
+  oauth2Client.setCredentials({ refresh_token: token });
   return google.calendar({ version: 'v3', auth: oauth2Client });
 }
 

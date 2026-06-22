@@ -14,3 +14,13 @@ export type AppointmentBookingArgs = {
 export type AvailabilityArgs = {
   date: string; // YYYY-MM-DD
 };
+
+export type Clinic = {
+  id: string;
+  clinic_name: string;
+  doctor_name: string;
+  google_calendar_id: string;
+  google_refresh_token: string | null;
+  username: string;
+  created_at: string;
+};

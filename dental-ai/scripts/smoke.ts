@@ -1,9 +1,12 @@
-import 'dotenv/config';
-import { supabase } from '../lib/supabase';
-import { openai } from '../lib/openai';
-import { getCalendarClient, CALENDAR_ID } from '../lib/google';
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 
+// Dynamic imports so env vars are populated before modules read process.env
 async function main() {
+  const { supabase } = await import('../lib/supabase');
+  const { openai } = await import('../lib/openai');
+  const { getCalendarClient } = await import('../lib/google');
+
   console.log('Testing Supabase...');
   const { error: sbError } = await supabase.from('calls').select('call_sid').limit(1);
   if (sbError) throw new Error(`Supabase: ${sbError.message}`);

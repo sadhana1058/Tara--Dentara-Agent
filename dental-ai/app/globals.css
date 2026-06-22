@@ -3,25 +3,87 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #f9f9ff;
+  --foreground: #181c23;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(224, 226, 237, 0.5);
+  box-shadow: 0 10px 40px -10px rgba(31, 38, 135, 0.05);
+}
+
+/* Gradient text */
+.premium-gradient-text {
+  background: linear-gradient(135deg, #001a41 0%, #0058bc 50%, #0070eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* CTA button glow */
+.cta-glow {
+  box-shadow: 0 0 20px rgba(0, 88, 188, 0.35);
+  background: linear-gradient(135deg, #0058bc 0%, #0070eb 100%);
+}
+.cta-glow:hover {
+  box-shadow: 0 0 32px rgba(0, 88, 188, 0.55);
+}
+
+/* Active nav glow */
+.active-nav-glow {
+  box-shadow: 0 0 20px rgba(0, 112, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Bento card hover */
+.bento-item {
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.bento-item:hover {
+  transform: scale(1.02);
+}
+
+/* Float animation */
+@keyframes float {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Modal zoom-in */
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-zoomIn {
+  animation: zoomIn 0.2s ease-out;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d8d9e5; border-radius: 10px; }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  .text-balance { text-wrap: balance; }
 }

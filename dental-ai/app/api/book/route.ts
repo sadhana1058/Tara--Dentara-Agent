@@ -1,54 +1,57 @@
 import { NextRequest } from 'next/server';
 import { DateTime } from 'luxon';
-import { getCalendarClient, CALENDAR_ID } from '@/lib/google';
-import { insertAppointment } from '@/lib/db';
+import { getCalendarClient } from '@/lib/google';
+import { insertAppointment, getClinicById } from '@/lib/db';
 
 const TZ = process.env.CLINIC_TIMEZONE || 'America/New_York';
 
 export async function POST(req: NextRequest) {
   try {
-    const { patient_name, patient_phone, start_time, call_sid } = await req.json();
+    const { patient_name, patient_phone, start_time, call_sid, clinic_id } = await req.json();
 
     if (!patient_name || !patient_phone || !start_time || !call_sid) {
       return Response.json({ error: 'missing required fields' }, { status: 400 });
     }
 
     const start = DateTime.fromISO(start_time, { zone: TZ });
-    if (!start.isValid) {
-      return Response.json({ error: 'invalid start_time' }, { status: 400 });
-    }
+    if (!start.isValid) return Response.json({ error: 'invalid start_time' }, { status: 400 });
+
     const end = start.plus({ minutes: 30 });
 
-    if (start < DateTime.now()) {
-      return Response.json({ error: 'cannot book in the past' }, { status: 400 });
-    }
-    if (start.hour < 9 || start.hour >= 17) {
-      return Response.json({ error: 'outside business hours' }, { status: 400 });
-    }
+    if (start < DateTime.now())          return Response.json({ error: 'cannot book in the past' },     { status: 400 });
+    if (start.hour < 9 || start.hour >= 17) return Response.json({ error: 'outside business hours' }, { status: 400 });
 
-    const cal = getCalendarClient();
+    // Resolve clinic credentials
+    const clinic       = clinic_id ? await getClinicById(clinic_id) : null;
+    const calendarId   = clinic?.google_calendar_id ?? process.env.GOOGLE_CALENDAR_ID ?? 'primary';
+    const refreshToken = clinic?.google_refresh_token ?? undefined;
+    const clinicName   = clinic?.clinic_name ?? process.env.CLINIC_NAME ?? 'Dental Office';
+    const doctorName   = clinic?.doctor_name ?? 'Doctor';
+
+    const cal   = getCalendarClient(refreshToken);
     const event = await cal.events.insert({
-      calendarId: CALENDAR_ID,
+      calendarId,
       requestBody: {
-        summary: `${patient_name} — Dental Appointment`,
-        description: `Booked via AI receptionist\nPhone: ${patient_phone}\nCall SID: ${call_sid}`,
+        summary:     `${patient_name} — Dental Appointment`,
+        description: `Booked via AI receptionist (Tara)\nClinic: ${clinicName}\nDoctor: ${doctorName}\nPhone: ${patient_phone}\nCall SID: ${call_sid}`,
         start: { dateTime: start.toISO()!, timeZone: TZ },
-        end: { dateTime: end.toISO()!, timeZone: TZ },
+        end:   { dateTime: end.toISO()!,   timeZone: TZ },
       },
     });
 
     const appointment = await insertAppointment({
       call_sid,
+      clinic_id: clinic_id ?? '',
       patient_name,
       patient_phone,
       start_time: start.toISO()!,
-      end_time: end.toISO()!,
+      end_time:   end.toISO()!,
       calendar_event_id: event.data.id!,
     });
 
     return Response.json({
-      success: true,
-      confirmation: `Appointment confirmed for ${start.toFormat("EEEE, MMMM d 'at' h:mm a")}`,
+      success:        true,
+      confirmation:   `Appointment confirmed for ${start.toFormat("EEEE, MMMM d 'at' h:mm a")}`,
       appointment_id: appointment.id,
     });
   } catch (err: any) {

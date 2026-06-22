@@ -1,11 +1,11 @@
 import { DateTime } from 'luxon';
 
 const TZ = process.env.CLINIC_TIMEZONE || 'America/New_York';
-const CLINIC_NAME = process.env.CLINIC_NAME || "Dr. Smith's Dental Office";
 
-export function systemPrompt(): string {
+export function systemPrompt(clinicName?: string): string {
+  const name = clinicName || process.env.CLINIC_NAME || "Dr. Smith's Dental Office";
   const now = DateTime.now().setZone(TZ);
-  return `You are the AI receptionist for ${CLINIC_NAME}.
+  return `You are the AI receptionist for ${name}.
 
 Office hours: Monday–Friday, 9:00 AM to 5:00 PM, ${TZ}.
 Today is ${now.toFormat("EEEE, MMMM d, yyyy")}. Current time: ${now.toFormat('h:mm a')}.
