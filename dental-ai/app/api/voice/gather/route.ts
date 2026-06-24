@@ -3,6 +3,7 @@ import { runTurn } from '@/lib/conversation';
 import { generateSpeech } from '@/lib/tts';
 import { twimlResponse, escapeXml } from '@/lib/twiml';
 import { endCall, getClinicForCall } from '@/lib/db';
+import { checkSafety } from '@/lib/safety';
 
 const BASE_URL = process.env.PUBLIC_BASE_URL!;
 
@@ -25,6 +26,39 @@ export async function POST(req: NextRequest) {
         <Play>${escapeXml(audioUrl)}</Play>
         <Gather input="speech" speechTimeout="auto" action="${escapeXml(gatherUrl)}" method="POST"/>
         <Say>I still didn't hear anything. Goodbye.</Say>
+        <Hangup/>
+      `);
+    }
+
+    // Safety check before touching GPT
+    const safety = checkSafety(speechResult);
+    if (!safety.safe) {
+      console.log(`[${callSid}] step=safety_block type=${safety.type}`);
+
+      let safetyReply: string;
+      let hangup = false;
+
+      if (safety.type === 'injection') {
+        safetyReply = "I can only help with scheduling dental appointments. How can I assist you today?";
+      } else if (safety.type === 'life_threatening') {
+        safetyReply = "This sounds like a medical emergency. Please hang up and call 911 immediately. Stay safe.";
+        hangup = true;
+      } else {
+        const address = process.env.CLINIC_ADDRESS || 'our office';
+        safetyReply = `This sounds urgent. Please come to our office at ${address} right away. For a knocked-out tooth you have about an hour, so act quickly. We will see you as soon as you arrive.`;
+        hangup = true;
+      }
+
+      const safetyAudio = await generateSpeech(safetyReply);
+      if (hangup) {
+        await endCall(callSid, 'emergency');
+        return twimlResponse(`<Play>${escapeXml(safetyAudio)}</Play><Hangup/>`);
+      }
+      const clinicIdParam = req.nextUrl.searchParams.get('clinic_id');
+      const gatherUrl = `${BASE_URL}/api/voice/gather${clinicIdParam ? `?clinic_id=${clinicIdParam}` : ''}`;
+      return twimlResponse(`
+        <Play>${escapeXml(safetyAudio)}</Play>
+        <Gather input="speech" speechTimeout="auto" action="${escapeXml(gatherUrl)}" method="POST"/>
         <Hangup/>
       `);
     }
