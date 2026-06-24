@@ -1,0 +1,6 @@
+{
+  "name": "DentiSync AI",
+  "description": "Premium Dental AI Receptionist Portal featuring Clinical Voice AI voice synthesis, PMS synchronization, and WhatsApp automation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
