@@ -25,6 +25,7 @@
     "twilio": "^6.0.2"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.12",
     "@types/bcryptjs": "^2.4.6",
     "@types/luxon": "^3.7.2",
     "@types/node": "^20",
