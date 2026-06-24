@@ -17,11 +17,21 @@ export async function getClinicByUsername(username: string): Promise<(Clinic & {
 export async function getClinicById(id: string): Promise<Clinic | null> {
   const { data, error } = await supabase
     .from('clinics')
-    .select('id, clinic_name, doctor_name, google_calendar_id, google_refresh_token, username, created_at')
+    .select('id, clinic_name, doctor_name, google_calendar_id, google_refresh_token, username, created_at, address, phone, timezone, greeting_text, appointment_length, open_time, close_time')
     .eq('id', id)
     .single();
   if (error) return null;
   return data;
+}
+
+export async function updateClinicSettings(id: string, fields: Record<string, unknown>) {
+  const { error } = await supabase.from('clinics').update(fields).eq('id', id);
+  if (error) throw error;
+}
+
+export async function updateClinicPassword(id: string, newHash: string) {
+  const { error } = await supabase.from('clinics').update({ password_hash: newHash }).eq('id', id);
+  if (error) throw error;
 }
 
 export async function getClinicForCall(callSid: string): Promise<Clinic | null> {

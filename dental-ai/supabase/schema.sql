@@ -62,6 +62,15 @@ create trigger calls_set_updated_at
 alter table calls        add column if not exists clinic_id uuid references clinics(id) on delete set null;
 alter table appointments add column if not exists clinic_id uuid references clinics(id) on delete set null;
 
+-- ── Clinic settings columns (migration) ───────────────────────────────────
+alter table clinics add column if not exists address          text;
+alter table clinics add column if not exists phone            text;
+alter table clinics add column if not exists timezone         text    not null default 'America/New_York';
+alter table clinics add column if not exists greeting_text    text;
+alter table clinics add column if not exists appointment_length int   not null default 30;
+alter table clinics add column if not exists open_time        text    not null default '09:00';
+alter table clinics add column if not exists close_time       text    not null default '17:00';
+
 -- ── Patients ───────────────────────────────────────────────────────────────
 create table if not exists patients (
   id         uuid primary key default gen_random_uuid(),

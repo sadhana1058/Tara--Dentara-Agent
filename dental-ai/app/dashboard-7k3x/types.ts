@@ -31,6 +31,20 @@ export interface StatsUI {
   aiEfficiencyRate: number;
 }
 
+export interface ClinicSettings {
+  clinicName: string;
+  doctorName: string;
+  address: string;
+  phone: string;
+  timezone: string;
+  greetingText: string;
+  appointmentLength: number;
+  openTime: string;
+  closeTime: string;
+  calendarEmail: string;
+  calendarConnected: boolean;
+}
+
 export interface DashboardData {
   appointments: AppointmentUI[];
   patients: PatientUI[];
@@ -39,4 +53,5 @@ export interface DashboardData {
   clinicPhone: string;
   clinicTimezone: string;
   clinicId: string;
+  clinicSettings: ClinicSettings;
 }

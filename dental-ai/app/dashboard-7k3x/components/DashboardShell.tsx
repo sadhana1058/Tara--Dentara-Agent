@@ -39,11 +39,7 @@ export default function DashboardShell({ data }: { data: DashboardData }) {
             <PatientsTab patients={data.patients} />
           )}
           {activeTab === 'settings' && (
-            <SettingsTab
-              clinicName={data.clinicName}
-              clinicPhone={data.clinicPhone}
-              clinicTimezone={data.clinicTimezone}
-            />
+            <SettingsTab settings={data.clinicSettings} />
           )}
         </div>
       </main>

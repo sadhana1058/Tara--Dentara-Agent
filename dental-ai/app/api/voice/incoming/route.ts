@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
 
     const clinic     = clinicId ? await getClinicById(clinicId) : null;
     const clinicName = clinic?.clinic_name ?? process.env.CLINIC_NAME ?? "the dental office";
-
-    const greeting = `Hello, thank you for calling ${clinicName}. How can I help you today?`;
+    const greeting   = (clinic as any)?.greeting_text
+      || `Hello, thank you for calling ${clinicName}. This is Tara, the AI receptionist. How can I help you today?`;
     const audioUrl = await generateSpeech(greeting);
 
     const gatherUrl = `${BASE_URL}/api/voice/gather${clinicId ? `?clinic_id=${clinicId}` : ''}`;

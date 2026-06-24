@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import { DateTime } from 'luxon';
 import { listAppointments, getDashboardStats, getClinicById, listPatients } from '@/lib/db';
 import DashboardShell from './components/DashboardShell';
-import type { AppointmentUI, PatientUI, DashboardData } from './types';
+import type { AppointmentUI, PatientUI, DashboardData, ClinicSettings } from './types';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +84,20 @@ export default async function Dashboard() {
     });
   }
 
+  const clinicSettings: ClinicSettings = {
+    clinicName:          clinic?.clinic_name        ?? 'Dental Office',
+    doctorName:          clinic?.doctor_name        ?? '',
+    address:             (clinic as any)?.address   ?? process.env.CLINIC_ADDRESS ?? '',
+    phone:               (clinic as any)?.phone     ?? clinicPhone,
+    timezone:            (clinic as any)?.timezone  ?? TZ,
+    greetingText:        (clinic as any)?.greeting_text ?? '',
+    appointmentLength:   (clinic as any)?.appointment_length ?? 30,
+    openTime:            (clinic as any)?.open_time  ?? '09:00',
+    closeTime:           (clinic as any)?.close_time ?? '17:00',
+    calendarEmail:       clinic?.google_calendar_id  ?? '',
+    calendarConnected:   !!(clinic as any)?.google_refresh_token,
+  };
+
   const data: DashboardData = {
     appointments,
     patients:       [...patientsFromDB, ...patientsFromAppts],
@@ -92,6 +106,7 @@ export default async function Dashboard() {
     clinicPhone,
     clinicTimezone: TZ,
     clinicId,
+    clinicSettings,
   };
 
   return <DashboardShell data={data} />;
