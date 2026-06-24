@@ -31,6 +31,8 @@ export default function DashboardShell({ data }: { data: DashboardData }) {
             <AppointmentsTab
               appointments={data.appointments}
               stats={data.stats}
+              clinicId={data.clinicId}
+              clinicTimezone={data.clinicTimezone}
             />
           )}
           {activeTab === 'patients' && (

@@ -38,4 +38,5 @@ export interface DashboardData {
   clinicName: string;
   clinicPhone: string;
   clinicTimezone: string;
+  clinicId: string;
 }

@@ -91,6 +91,7 @@ export default async function Dashboard() {
     clinicName,
     clinicPhone,
     clinicTimezone: TZ,
+    clinicId,
   };
 
   return <DashboardShell data={data} />;

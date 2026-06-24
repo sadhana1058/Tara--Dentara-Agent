@@ -72,7 +72,7 @@ export async function endCall(callSid: string, reason: string) {
 // ── Appointments ───────────────────────────────────────────────────────────
 
 export async function insertAppointment(args: {
-  call_sid: string;
+  call_sid: string | null;
   clinic_id: string;
   patient_name: string;
   patient_phone: string;
@@ -87,6 +87,35 @@ export async function insertAppointment(args: {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function getAppointmentById(id: string, clinicId: string) {
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('*')
+    .eq('id', id)
+    .eq('clinic_id', clinicId)
+    .single();
+  if (error) return null;
+  return data;
+}
+
+export async function cancelAppointment(id: string, clinicId: string) {
+  const { error } = await supabase
+    .from('appointments')
+    .update({ status: 'cancelled' })
+    .eq('id', id)
+    .eq('clinic_id', clinicId);
+  if (error) throw error;
+}
+
+export async function rescheduleAppointment(id: string, clinicId: string, startTime: string, endTime: string, calendarEventId: string) {
+  const { error } = await supabase
+    .from('appointments')
+    .update({ start_time: startTime, end_time: endTime, calendar_event_id: calendarEventId })
+    .eq('id', id)
+    .eq('clinic_id', clinicId);
+  if (error) throw error;
 }
 
 export async function listAppointments(clinicId: string) {
