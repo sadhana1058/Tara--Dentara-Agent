@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     if (!start.isValid) return Response.json({ error: 'Invalid start_time' }, { status: 400 });
     if (start < DateTime.now()) return Response.json({ error: 'Cannot book in the past' }, { status: 400 });
     if (start.hour < 9 || start.hour >= 17) return Response.json({ error: 'Outside business hours' }, { status: 400 });
+    if (start.minute !== 0 && start.minute !== 30) return Response.json({ error: 'Slot must be on the hour or half-hour' }, { status: 400 });
 
     const end = start.plus({ minutes: 30 });
 
@@ -42,6 +43,20 @@ export async function POST(req: NextRequest) {
     const doctorName = clinic?.doctor_name ?? 'Doctor';
 
     const cal = getCalendarClient(clinic?.google_refresh_token ?? undefined);
+
+    const fb = await cal.freebusy.query({
+      requestBody: {
+        timeMin:  start.toISO()!,
+        timeMax:  end.toISO()!,
+        timeZone: TZ,
+        items:    [{ id: calendarId }],
+      },
+    });
+    const busy = fb.data.calendars?.[calendarId]?.busy ?? [];
+    if (busy.length > 0) {
+      return Response.json({ error: 'Slot no longer available — please choose another time' }, { status: 409 });
+    }
+
     const event = await cal.events.insert({
       calendarId,
       requestBody: {

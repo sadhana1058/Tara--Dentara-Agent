@@ -18,8 +18,9 @@ export async function POST(req: NextRequest) {
 
     const end = start.plus({ minutes: 30 });
 
-    if (start < DateTime.now())          return Response.json({ error: 'cannot book in the past' },     { status: 400 });
-    if (start.hour < 9 || start.hour >= 17) return Response.json({ error: 'outside business hours' }, { status: 400 });
+    if (start < DateTime.now())             return Response.json({ error: 'cannot book in the past' },      { status: 400 });
+    if (start.hour < 9 || start.hour >= 17) return Response.json({ error: 'outside business hours' },      { status: 400 });
+    if (start.minute !== 0 && start.minute !== 30) return Response.json({ error: 'slot must be on the hour or half-hour' }, { status: 400 });
 
     // Resolve clinic credentials
     const clinic       = clinic_id ? await getClinicById(clinic_id) : null;
@@ -28,7 +29,22 @@ export async function POST(req: NextRequest) {
     const clinicName   = clinic?.clinic_name ?? process.env.CLINIC_NAME ?? 'Dental Office';
     const doctorName   = clinic?.doctor_name ?? 'Doctor';
 
-    const cal   = getCalendarClient(refreshToken);
+    const cal = getCalendarClient(refreshToken);
+
+    // Double-booking guard: verify slot is still free right before inserting
+    const fb = await cal.freebusy.query({
+      requestBody: {
+        timeMin:  start.toISO()!,
+        timeMax:  end.toISO()!,
+        timeZone: TZ,
+        items:    [{ id: calendarId }],
+      },
+    });
+    const busy = fb.data.calendars?.[calendarId]?.busy ?? [];
+    if (busy.length > 0) {
+      return Response.json({ error: 'slot no longer available — please choose another time' }, { status: 409 });
+    }
+
     const event = await cal.events.insert({
       calendarId,
       requestBody: {
