@@ -151,6 +151,24 @@ export async function listPatients(clinicId: string) {
   return data ?? [];
 }
 
+export async function updatePatient(id: string, clinicId: string, fields: { name?: string; email?: string | null; notes?: string | null }) {
+  const { error } = await supabase
+    .from('patients')
+    .update(fields)
+    .eq('id', id)
+    .eq('clinic_id', clinicId);
+  if (error) throw error;
+}
+
+export async function deletePatient(id: string, clinicId: string) {
+  const { error } = await supabase
+    .from('patients')
+    .delete()
+    .eq('id', id)
+    .eq('clinic_id', clinicId);
+  if (error) throw error;
+}
+
 export async function insertPatient(args: {
   clinic_id: string;
   name: string;

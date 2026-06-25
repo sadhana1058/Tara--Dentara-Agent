@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { PatientUI } from '../types';
 
 interface AddPatientForm {
@@ -12,13 +13,79 @@ interface AddPatientForm {
 const EMPTY_FORM: AddPatientForm = { name: '', phone: '', email: '', notes: '' };
 
 export default function PatientsTab({ patients: initial }: { patients: PatientUI[] }) {
-  const [patients, setPatients]             = useState<PatientUI[]>(initial);
-  const [searchQuery, setSearchQuery]       = useState('');
+  const router = useRouter();
+  const [patients, setPatients]               = useState<PatientUI[]>(initial);
+  const [searchQuery, setSearchQuery]         = useState('');
   const [selectedPatient, setSelectedPatient] = useState<PatientUI | null>(null);
-  const [showAddModal, setShowAddModal]     = useState(false);
-  const [form, setForm]                     = useState<AddPatientForm>(EMPTY_FORM);
-  const [saving, setSaving]                 = useState(false);
-  const [formError, setFormError]           = useState('');
+  const [editMode, setEditMode]               = useState(false);
+  const [editForm, setEditForm]               = useState({ name: '', email: '', notes: '' });
+  const [showAddModal, setShowAddModal]       = useState(false);
+  const [form, setForm]                       = useState<AddPatientForm>(EMPTY_FORM);
+  const [saving, setSaving]                   = useState(false);
+  const [editSaving, setEditSaving]           = useState(false);
+  const [deleting, setDeleting]               = useState(false);
+  const [formError, setFormError]             = useState('');
+  const [editError, setEditError]             = useState('');
+
+  function openView(patient: PatientUI) {
+    setSelectedPatient(patient);
+    setEditMode(false);
+    setEditError('');
+  }
+
+  function openEdit(patient: PatientUI) {
+    setSelectedPatient(patient);
+    setEditForm({ name: patient.name, email: patient.email ?? '', notes: patient.notes ?? '' });
+    setEditMode(true);
+    setEditError('');
+  }
+
+  async function handleSaveEdit() {
+    if (!selectedPatient || !editForm.name.trim()) {
+      setEditError('Name is required.');
+      return;
+    }
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const res = await fetch(`/api/patients/${selectedPatient.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editForm.name, email: editForm.email, notes: editForm.notes }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
+      setPatients(prev => prev.map(p =>
+        p.id === selectedPatient.id
+          ? { ...p, name: editForm.name, email: editForm.email || null, notes: editForm.notes || null }
+          : p
+      ));
+      setSelectedPatient(p => p ? { ...p, name: editForm.name, email: editForm.email || null, notes: editForm.notes || null } : null);
+      setEditMode(false);
+      router.refresh();
+    } catch (e: any) {
+      setEditError(e.message);
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedPatient) return;
+    if (!confirm(`Delete ${selectedPatient.name}? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/patients/${selectedPatient.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+      setPatients(prev => prev.filter(p => p.id !== selectedPatient.id));
+      setSelectedPatient(null);
+      router.refresh();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const filtered = patients.filter(
     (p) =>
@@ -157,12 +224,20 @@ export default function PatientsTab({ patients: initial }: { patients: PatientUI
                     </td>
                     <td className="py-4 text-xs font-bold text-[#005bc1]">{patient.appointmentCount}</td>
                     <td className="py-4 text-right">
-                      <button
-                        onClick={() => setSelectedPatient(patient)}
-                        className="text-xs font-bold text-[#005bc1] hover:text-white border border-[#005bc1]/10 hover:bg-[#005bc1] px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      >
-                        View
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openEdit(patient)}
+                          className="text-xs font-bold text-[#555f6f] hover:text-[#005bc1] border border-[#e0e2ed] hover:border-[#005bc1]/30 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => openView(patient)}
+                          className="text-xs font-bold text-[#005bc1] hover:text-white border border-[#005bc1]/10 hover:bg-[#005bc1] px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -172,48 +247,125 @@ export default function PatientsTab({ patients: initial }: { patients: PatientUI
         )}
       </div>
 
-      {/* ── Patient detail modal ───────────────────────────────── */}
+      {/* ── Patient detail / edit modal ───────────────────────── */}
       {selectedPatient && (
         <div className="fixed inset-0 bg-[#001a41]/30 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-[2.5rem] border border-[#e0e2ed]/60 max-w-md w-full shadow-2xl animate-zoomIn">
+            {/* Header */}
             <div className="p-8 border-b border-[#e0e2ed]/40 flex justify-between items-start">
               <div>
                 <span className="text-xs font-bold text-[#005bc1] font-mono">{selectedPatient.phone}</span>
                 <h3 className="text-2xl font-black text-[#181c23] tracking-tight mt-1">{selectedPatient.name}</h3>
               </div>
-              <button
-                onClick={() => setSelectedPatient(null)}
-                className="p-1 hover:bg-[#ecedf9] rounded-lg transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-gray-500">close</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {!editMode && (
+                  <button
+                    onClick={() => openEdit(selectedPatient)}
+                    className="text-xs font-bold text-[#555f6f] border border-[#e0e2ed] hover:border-[#0058bc]/30 hover:text-[#0058bc] px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  onClick={() => { setSelectedPatient(null); setEditMode(false); }}
+                  className="p-1 hover:bg-[#ecedf9] rounded-lg transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-gray-500">close</span>
+                </button>
+              </div>
             </div>
-            <div className="p-8 space-y-4">
-              {[
-                { icon: 'call',           label: 'Phone',            value: selectedPatient.phone },
-                { icon: 'mail',           label: 'Email',            value: selectedPatient.email ?? 'Not provided' },
-                { icon: 'history',        label: 'Last Visit',       value: selectedPatient.lastVisit ?? 'No past visits' },
-                { icon: 'calendar_today', label: 'Next Appointment', value: selectedPatient.nextAppointment ?? 'None scheduled' },
-                { icon: 'bookmark',       label: 'Total Bookings',   value: `${selectedPatient.appointmentCount} appointment${selectedPatient.appointmentCount !== 1 ? 's' : ''}` },
-                { icon: 'smart_toy',      label: 'Channel',          value: 'AI Voice Receptionist (Tara)' },
-              ].map((row) => (
-                <div key={row.label} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-[#0058bc]/5 flex items-center justify-center text-[#0058bc] flex-shrink-0">
-                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{row.icon}</span>
+
+            {/* View mode */}
+            {!editMode && (
+              <div className="p-8 space-y-4">
+                {[
+                  { icon: 'call',           label: 'Phone',            value: selectedPatient.phone },
+                  { icon: 'mail',           label: 'Email',            value: selectedPatient.email ?? 'Not provided' },
+                  { icon: 'history',        label: 'Last Visit',       value: selectedPatient.lastVisit ?? 'No past visits' },
+                  { icon: 'calendar_today', label: 'Next Appointment', value: selectedPatient.nextAppointment ?? 'None scheduled' },
+                  { icon: 'bookmark',       label: 'Total Bookings',   value: `${selectedPatient.appointmentCount} appointment${selectedPatient.appointmentCount !== 1 ? 's' : ''}` },
+                ].map((row) => (
+                  <div key={row.label} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-[#0058bc]/5 flex items-center justify-center text-[#0058bc] flex-shrink-0">
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{row.icon}</span>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold text-[#555f6f] uppercase tracking-wider">{row.label}</div>
+                      <div className="text-sm font-semibold text-[#181c23]">{row.value}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[10px] font-bold text-[#555f6f] uppercase tracking-wider">{row.label}</div>
-                    <div className="text-sm font-semibold text-[#181c23]">{row.value}</div>
+                ))}
+                {selectedPatient.notes && (
+                  <div className="mt-2 p-4 bg-[#f9f9ff] border border-[#e0e2ed]/60 rounded-2xl">
+                    <div className="text-[10px] font-bold text-[#555f6f] uppercase tracking-wider mb-1">Notes</div>
+                    <div className="text-sm text-[#181c23] leading-relaxed">{selectedPatient.notes}</div>
                   </div>
+                )}
+                <div className="pt-4 border-t border-[#e0e2ed]/40">
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="text-xs font-bold text-red-500 hover:text-red-700 disabled:opacity-50"
+                  >
+                    {deleting ? 'Deleting…' : 'Delete patient record'}
+                  </button>
                 </div>
-              ))}
-              {selectedPatient.notes && (
-                <div className="mt-4 p-4 bg-[#f9f9ff] border border-[#e0e2ed]/60 rounded-2xl">
-                  <div className="text-[10px] font-bold text-[#555f6f] uppercase tracking-wider mb-1">Notes</div>
-                  <div className="text-sm text-[#181c23] leading-relaxed">{selectedPatient.notes}</div>
+              </div>
+            )}
+
+            {/* Edit mode */}
+            {editMode && (
+              <div className="p-8 space-y-4">
+                {editError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold">
+                    {editError}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-bold text-[#555f6f] uppercase tracking-wider mb-1.5">Full Name</label>
+                  <input
+                    className="w-full bg-[#f9f9ff] border border-[#e0e2ed] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0058bc] transition-colors"
+                    value={editForm.name}
+                    onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  />
                 </div>
-              )}
-            </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#555f6f] uppercase tracking-wider mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    className="w-full bg-[#f9f9ff] border border-[#e0e2ed] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0058bc] transition-colors"
+                    value={editForm.email}
+                    placeholder="optional"
+                    onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#555f6f] uppercase tracking-wider mb-1.5">Notes</label>
+                  <textarea
+                    rows={3}
+                    className="w-full bg-[#f9f9ff] border border-[#e0e2ed] rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0058bc] transition-colors resize-none"
+                    value={editForm.notes}
+                    placeholder="Allergies, insurance info, etc."
+                    onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setEditMode(false)}
+                    className="flex-1 py-2.5 border border-[#e0e2ed] text-[#555f6f] font-bold rounded-xl text-sm hover:bg-[#f9f9ff] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={editSaving}
+                    className="flex-1 py-2.5 bg-[#0058bc] hover:bg-[#0046a0] text-white font-bold rounded-xl text-sm disabled:opacity-50 transition-colors"
+                  >
+                    {editSaving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
